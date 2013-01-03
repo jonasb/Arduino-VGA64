@@ -23,12 +23,10 @@ ISR (TIMER2_OVF_vect) {
 
 #define COLUMN_COUNT  10
 #define ROW_COUNT 22
-const byte block_height = Y_PIXELS / ROW_COUNT;
-const byte block_width = block_height;
-const byte playfield_offset_y = (Y_PIXELS - ROW_COUNT * block_height) / 2;
-const byte playfield_offset_x = (X_PIXELS - COLUMN_COUNT * block_width) / 2;
+const byte playfield_offset_y = (Y_PIXELS - ROW_COUNT) / 2;
+const byte playfield_offset_x = (X_PIXELS - COLUMN_COUNT) / 2;
 
-byte playfield[ROW_COUNT * COLUMN_COUNT];
+byte playfield[ROW_COUNT][COLUMN_COUNT];
 enum BlockType {
   BLOCK_NONE,
   BLOCK_I,
@@ -108,19 +106,15 @@ void loop() {
       if (current_row == ROW_COUNT - 1) {
         current_row = 0;
         current_block = 1 + (current_block % 7);
-        playfield[current_col] = current_block;
-        draw_block(current_col, current_row);
+        update_block(current_col, current_row, current_block);
       } else {
-        byte i = current_row * COLUMN_COUNT + current_col;
-        byte block = playfield[i];
+        byte block = playfield[current_row][current_col];
         if (block == BLOCK_NONE) // first time
           block = current_block = BLOCK_I;
-        playfield[i] = BLOCK_NONE;
-        draw_block(current_col, current_row);
+
+        update_block(current_col, current_row, BLOCK_NONE);
         ++current_row;
-        i += COLUMN_COUNT;
-        playfield[i] = block;
-        draw_block(current_col, current_row);
+        update_block(current_col, current_row, block);
       }
     }
   }
@@ -129,16 +123,13 @@ void loop() {
 void draw_field() {
   for (byte row = 0; row < ROW_COUNT; row++) {
     for (byte col = 0; col < COLUMN_COUNT; col++) {
-      draw_block(col, row);
+      const byte color = block_colors[playfield[row][col]];
+      bitmap[playfield_offset_y+row][playfield_offset_x + col] = color;
     }
   }
 }
 
-void draw_block(byte col, byte row) {
-  const byte color = block_colors[playfield[row * COLUMN_COUNT + col]];
-  const byte y_offset = playfield_offset_y + row * block_height;
-  const byte x_offset = playfield_offset_x + col * block_width;
-  for (byte y = 0; y < block_height; y++) {
-    memset(bitmap[y_offset + y] + x_offset, color, block_width);
-  }
+void update_block(byte col, byte row, byte block) {
+  playfield[row][col] = block;
+  bitmap[playfield_offset_y+row][playfield_offset_x + col] = block_colors[block];
 }
