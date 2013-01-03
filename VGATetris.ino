@@ -21,6 +21,40 @@ ISR (TIMER2_OVF_vect) {
   line_ctr++;
 }
 
+#define COLUMN_COUNT  10
+#define ROW_COUNT 22
+const byte block_height = Y_PIXELS / ROW_COUNT;
+const byte block_width = block_height;
+const byte playfield_offset_y = (Y_PIXELS - ROW_COUNT * block_height) / 2;
+const byte playfield_offset_x = (X_PIXELS - COLUMN_COUNT * block_width) / 2;
+
+byte playfield[ROW_COUNT * COLUMN_COUNT];
+enum BlockType {
+  BLOCK_NONE,
+  BLOCK_I,
+  BLOCK_O,
+  BLOCK_T,
+  BLOCK_S,
+  BLOCK_Z,
+  BLOCK_J,
+  BLOCK_L,
+};
+const byte block_colors[] = {
+  0b00000001,
+  0b11110000,
+  0b00110011,
+  0b11000010,
+  0b00110001,
+  0b00000011,
+  0b11100000,
+  0b00100011,
+};
+byte current_block = 0;
+byte current_col = COLUMN_COUNT / 2;
+byte current_row = 0;
+
+byte time = 0;
+
 void setup() {
   // kill timer 0
   TIMSK0 = 0;
@@ -47,17 +81,10 @@ void setup() {
   pinMode(5, OUTPUT); pinMode(6, OUTPUT); pinMode(7, OUTPUT);
   // set sleep mode (int will wake)
   set_sleep_mode(SLEEP_MODE_IDLE);
+  // setup playfield
+  memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
+  draw_field();
 }
-
-// purrty colors
-const byte rbow[] = {
-  0b00000000, 0b00000001, 0b00000010, 0b00000011,
-  0b00010011, 0b00100011, 0b00110011, 0b00110010,
-  0b00110001, 0b00110000, 0b01110000, 0b10110000,
-  0b11110000, 0b11100000, 0b11010000, 0b11000000,
-  0b11000001, 0b11000010, 0b11000011, 0b11010011,
-  0b11100011, 0b11110011, 0b10100010, 0b01010001
-};
 
 void loop() {
   sleep_mode();
@@ -74,13 +101,44 @@ void loop() {
     PORTD = 0;
   } else if(line_ctr == 480) {
     // application code - executed on each frame
-    // runtime must not exceed 45 lines = ~1.4µS
-    static byte x, y, c;
-    bitmap[y][x] = rbow[c];
-    if(++c==sizeof(rbow))c=0;
-    if(++x == X_PIXELS) {
-      x = 0;
-      if(++y == Y_PIXELS) y = 0;
+    // runtime must not exceed 45 lines = ~1.4mS
+    ++time;
+    if (time == 20) {
+      time = 0;
+      if (current_row == ROW_COUNT - 1) {
+        current_row = 0;
+        current_block = 1 + (current_block % 7);
+        playfield[current_col] = current_block;
+        draw_block(current_col, current_row);
+      } else {
+        byte i = current_row * COLUMN_COUNT + current_col;
+        byte block = playfield[i];
+        if (block == BLOCK_NONE) // first time
+          block = current_block = BLOCK_I;
+        playfield[i] = BLOCK_NONE;
+        draw_block(current_col, current_row);
+        ++current_row;
+        i += COLUMN_COUNT;
+        playfield[i] = block;
+        draw_block(current_col, current_row);
+      }
     }
+  }
+}
+
+void draw_field() {
+  for (byte row = 0; row < ROW_COUNT; row++) {
+    for (byte col = 0; col < COLUMN_COUNT; col++) {
+      draw_block(col, row);
+    }
+  }
+}
+
+void draw_block(byte col, byte row) {
+  const byte color = block_colors[playfield[row * COLUMN_COUNT + col]];
+  const byte y_offset = playfield_offset_y + row * block_height;
+  const byte x_offset = playfield_offset_x + col * block_width;
+  for (byte y = 0; y < block_height; y++) {
+    memset(bitmap[y_offset + y] + x_offset, color, block_width);
   }
 }
