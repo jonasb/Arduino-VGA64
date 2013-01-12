@@ -47,9 +47,14 @@ const byte block_colors[] = {
   0b11100000,
   0b00100011,
 };
-byte current_block = 0;
+byte current_block = BLOCK_I;
 byte current_col = COLUMN_COUNT / 2;
 byte current_row = 0;
+
+#define KEY_REPEAT_FRAMES 10
+byte key_consecutive_press_left = 0;
+byte key_consecutive_press_right = 0;
+byte key_consecutive_press_rotate = 0;
 
 byte time = 0;
 
@@ -82,6 +87,13 @@ void setup() {
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
   draw_field();
+  // control
+  pinMode(11, INPUT);
+  digitalWrite(11, HIGH);
+  pinMode(12, INPUT);
+  digitalWrite(12, HIGH);
+  pinMode(8, INPUT);
+  digitalWrite(8, HIGH);
 }
 
 void loop() {
@@ -101,35 +113,64 @@ void loop() {
     // application code - executed on each frame
     // runtime must not exceed 45 lines = ~1.4mS
     ++time;
-    if (time == 20) {
+
+    read_key(12, key_consecutive_press_right);
+    read_key(8, key_consecutive_press_left);
+    read_key(11, key_consecutive_press_rotate);
+
+    if (key_consecutive_press_right % KEY_REPEAT_FRAMES == 1) {
+      move_block(1, 0);
+    }
+    if (key_consecutive_press_left % KEY_REPEAT_FRAMES == 1) {
+      move_block(-1, 0);
+    }
+
+    if (time == 10) {
       time = 0;
-      if (current_row == ROW_COUNT - 1) {
+      if (!move_block(0, 1)) {
         current_row = 0;
+        current_col = 0;
         current_block = 1 + (current_block % 7);
         update_block(current_col, current_row, current_block);
-      } else {
-        byte block = playfield[current_row][current_col];
-        if (block == BLOCK_NONE) // first time
-          block = current_block = BLOCK_I;
-
-        update_block(current_col, current_row, BLOCK_NONE);
-        ++current_row;
-        update_block(current_col, current_row, block);
       }
     }
   }
+}
+
+void read_key(int pin, byte &key_consecutive_press) {
+  if (digitalRead(pin) == LOW) {
+    ++key_consecutive_press; //TODO 0xff
+  } else {
+    key_consecutive_press = 0;
+  }
+}
+
+boolean move_block(byte dx, byte dy) {
+  byte next_col = current_col + dx;
+  byte next_row = current_row + dy;
+  if (next_col < 0 || next_col >= COLUMN_COUNT || next_row >= ROW_COUNT) {
+    return false;
+  }
+  if (playfield[next_row][next_col] != BLOCK_NONE) {
+    return false;
+  }
+  update_block(current_col, current_row, BLOCK_NONE);
+  current_col = next_col;
+  current_row = next_row;
+  update_block(current_col, current_row, current_block);
+  return true;
 }
 
 void draw_field() {
   for (byte row = 0; row < ROW_COUNT; row++) {
     for (byte col = 0; col < COLUMN_COUNT; col++) {
       const byte color = block_colors[playfield[row][col]];
-      bitmap[playfield_offset_y+row][playfield_offset_x + col] = color;
+      bitmap[playfield_offset_y + row][playfield_offset_x + col] = color;
     }
   }
 }
 
 void update_block(byte col, byte row, byte block) {
   playfield[row][col] = block;
-  bitmap[playfield_offset_y+row][playfield_offset_x + col] = block_colors[block];
+  bitmap[playfield_offset_y + row][playfield_offset_x + col] = block_colors[block];
 }
