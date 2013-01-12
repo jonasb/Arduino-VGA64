@@ -48,7 +48,7 @@ const byte block_colors[] = {
   0b00100011,
 };
 byte current_block = BLOCK_NONE;
-byte current_col = 0;
+byte current_col = COLUMN_COUNT / 1;
 byte current_row = 0;
 
 byte block_bag[] = {
@@ -147,7 +147,7 @@ void loop() {
         collapse_full_rows();
 
         current_row = 0;
-        current_col = 0;
+        current_col = COLUMN_COUNT / 2;
         current_block = get_next_block();
         update_block(current_col, current_row, current_block);
       }
@@ -235,3 +235,4 @@ void update_block(byte col, byte row, byte block) {
   playfield[row][col] = block;
   bitmap[playfield_offset_y + row][playfield_offset_x + col] = block_colors[block];
 }
+
