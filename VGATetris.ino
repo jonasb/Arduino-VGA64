@@ -133,11 +133,13 @@ void loop() {
     read_key(8, key_consecutive_press_left);
     read_key(11, key_consecutive_press_rotate);
 
-    if (key_consecutive_press_right % KEY_REPEAT_FRAMES == 1) {
-      move_block(1, 0);
-    }
-    if (key_consecutive_press_left % KEY_REPEAT_FRAMES == 1) {
-      move_block(-1, 0);
+    if (key_consecutive_press_right == 0 || key_consecutive_press_left == 0) {
+      if (key_consecutive_press_right % KEY_REPEAT_FRAMES == 1) {
+        move_block(1, 0);
+      }
+      if (key_consecutive_press_left % KEY_REPEAT_FRAMES == 1) {
+        move_block(-1, 0);
+      }
     }
 
     if (time == 10) {
