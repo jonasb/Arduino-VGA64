@@ -47,9 +47,21 @@ const byte block_colors[] = {
   0b11100000,
   0b00100011,
 };
-byte current_block = BLOCK_I;
-byte current_col = COLUMN_COUNT / 2;
+byte current_block = BLOCK_NONE;
+byte current_col = 0;
 byte current_row = 0;
+
+byte block_bag[] = {
+  BLOCK_I,
+  BLOCK_O,
+  BLOCK_T,
+  BLOCK_S,
+  BLOCK_Z,
+  BLOCK_J,
+  BLOCK_L,
+};
+#define BLOCK_BAG_COUNT 7
+byte block_bag_index = BLOCK_BAG_COUNT - 1; // will cause bag randomization
 
 #define KEY_REPEAT_FRAMES 10
 byte key_consecutive_press_left = 0;
@@ -84,9 +96,12 @@ void setup() {
   pinMode(5, OUTPUT); pinMode(6, OUTPUT); pinMode(7, OUTPUT);
   // set sleep mode (int will wake)
   set_sleep_mode(SLEEP_MODE_IDLE);
+  //
+  randomSeed(analogRead(0)); // analog 0 is unconnected
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
   draw_field();
+  current_block = get_next_block();
   // control
   pinMode(11, INPUT);
   digitalWrite(11, HIGH);
@@ -128,9 +143,12 @@ void loop() {
     if (time == 10) {
       time = 0;
       if (!move_block(0, 1)) {
+        // Block is stuck
+        collapse_full_rows();
+
         current_row = 0;
         current_col = 0;
-        current_block = 1 + (current_block % 7);
+        current_block = get_next_block();
         update_block(current_col, current_row, current_block);
       }
     }
@@ -143,6 +161,21 @@ void read_key(int pin, byte &key_consecutive_press) {
   } else {
     key_consecutive_press = 0;
   }
+}
+
+byte get_next_block() {
+  ++block_bag_index;
+  if (block_bag_index == BLOCK_BAG_COUNT) {
+    block_bag_index = 0;
+    // randomize bag
+    for (byte i = 0; i < BLOCK_BAG_COUNT - 1; i++) {
+      byte j = random(i + 1, BLOCK_BAG_COUNT);
+      byte t = block_bag[j];
+      block_bag[j] = block_bag[i];
+      block_bag[i] = t;
+    }
+  }
+  return block_bag[block_bag_index];
 }
 
 boolean move_block(byte dx, byte dy) {
@@ -158,6 +191,34 @@ boolean move_block(byte dx, byte dy) {
   current_col = next_col;
   current_row = next_row;
   update_block(current_col, current_row, current_block);
+  return true;
+}
+
+void collapse_full_rows() {
+  for (byte check_row_index = 0; check_row_index < ROW_COUNT; check_row_index++) {
+    byte *check_row = playfield[check_row_index];
+    if (full_row(check_row)) {
+      // TODO consider the two invisible rows at top
+      for (byte replace_row_index = check_row_index; replace_row_index > 1; replace_row_index--) {
+        byte *playfield_from_row = playfield[replace_row_index - 1];
+        byte *playfield_to_row = playfield[replace_row_index];
+        byte *bitmap_from_row = bitmap[playfield_offset_y + replace_row_index - 1];
+        byte *bitmap_to_row = bitmap[playfield_offset_y + replace_row_index];
+        for (byte col = 0; col < COLUMN_COUNT; col++) {
+          playfield_to_row[col] = playfield_from_row[col];
+          bitmap_to_row[playfield_offset_x + col] = bitmap_from_row[playfield_offset_x + col];
+        }
+      }
+    }
+  }
+}
+
+boolean full_row(byte *row) {
+  for (int col = 0; col < COLUMN_COUNT; col++) {
+    if (row[col] == BLOCK_NONE) {
+      return false;
+    }
+  }
   return true;
 }
 
