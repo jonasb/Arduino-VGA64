@@ -38,7 +38,7 @@ enum BlockType {
   BLOCK_L,
 };
 const byte block_colors[] = {
-  0b00000001,
+  0b00000000,
   0b11110000,
   0b00110011,
   0b11000010,
@@ -139,6 +139,7 @@ void setup() {
   randomSeed(analogRead(0)); // analog 0 is unconnected
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
+  memset(bitmap, 0b00000001, Y_PIXELS * X_PIXELS);
   draw_field();
   select_next_block();
   //debug_draw_all_colors(0, 0, Y_PIXELS);
