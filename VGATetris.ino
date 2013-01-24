@@ -85,7 +85,13 @@ const byte BLOCK_L_STRUCTURE[3][3] = {
 
 
 byte current_block_type = BLOCK_NONE;
-const byte *current_block_structure = 0;
+byte current_block_structure_tmp[] = {
+  0, 0, 0, 0,
+  0, 0, 0, 0,
+  0, 0, 0, 0,
+  0, 0, 0, 0,
+};
+byte *current_block_structure = current_block_structure_tmp;
 byte current_block_size;
 byte current_col = COLUMN_COUNT / 1;
 byte current_row = 0;
@@ -191,8 +197,11 @@ void loop() {
         move_block(-1, 0);
       }
     }
+    if (key_consecutive_press_rotate % KEY_REPEAT_FRAMES == 1) {
+      rotate_block();
+    }
 
-    if (time == 10) {
+    if (time == 20) {
       time = 0;
       if (!move_block(0, 1)) {
         // Block is stuck
@@ -229,36 +238,42 @@ void select_next_block() {
     }
   }
   current_block_type = block_bag[block_bag_index];
+  const byte *structure;
   switch (current_block_type) {
   default:
   case BLOCK_I:
-    current_block_structure = (byte *)BLOCK_I_STRUCTURE;
+    structure = (byte *)BLOCK_I_STRUCTURE;
     current_block_size = 4;
     break;
   case BLOCK_O:
-    current_block_structure = (byte *)BLOCK_O_STRUCTURE;
+    structure = (byte *)BLOCK_O_STRUCTURE;
     current_block_size = 2;
     break;
   case BLOCK_T:
-    current_block_structure = (byte *)BLOCK_T_STRUCTURE;
+    structure = (byte *)BLOCK_T_STRUCTURE;
     current_block_size = 3;
     break;
   case BLOCK_S:
-    current_block_structure = (byte *)BLOCK_S_STRUCTURE;
+    structure = (byte *)BLOCK_S_STRUCTURE;
     current_block_size = 3;
     break;
   case BLOCK_Z:
-    current_block_structure = (byte *)BLOCK_Z_STRUCTURE;
+    structure = (byte *)BLOCK_Z_STRUCTURE;
     current_block_size = 3;
     break;
   case BLOCK_J:
-    current_block_structure = (byte *)BLOCK_J_STRUCTURE;
+    structure = (byte *)BLOCK_J_STRUCTURE;
     current_block_size = 3;
     break;
   case BLOCK_L:
-    current_block_structure = (byte *)BLOCK_L_STRUCTURE;
+    structure = (byte *)BLOCK_L_STRUCTURE;
     current_block_size = 3;
     break;
+  }
+
+  for (byte i = 0; i < current_block_size * current_block_size; i++) {
+    byte b = structure[i];
+    current_block_structure[i] = b;
   }
 }
 
@@ -275,11 +290,24 @@ void add_block_to_playfield() {
 boolean move_block(byte dx, byte dy) {
   byte next_col = current_col + dx;
   byte next_row = current_row + dy;
+
+  if (!valid_block_position(next_col, next_row, current_block_structure)) {
+    return false;
+  }
+
+  update_block(current_col, current_row, BLOCK_NONE);
+  current_col = next_col;
+  current_row = next_row;
+  update_block(current_col, current_row, current_block_type);
+  return true;
+}
+
+boolean valid_block_position(byte start_x, byte start_y, byte *block) {
   for (byte block_y = 0; block_y < current_block_size; block_y++) {
     for (byte block_x = 0; block_x < current_block_size; block_x++) {
-      if (current_block_structure[block_y * current_block_size + block_x] != 0) {
-        byte x = next_col + block_x;
-        byte y = next_row + block_y;
+      if (block[block_y * current_block_size + block_x] != 0) {
+        byte x = start_x + block_x;
+        byte y = start_y + block_y;
         if (x < 0 || x >= COLUMN_COUNT || y >= ROW_COUNT) {
           return false;
         }
@@ -289,11 +317,34 @@ boolean move_block(byte dx, byte dy) {
       }
     }
   }
+  return true;
+}
+
+boolean rotate_block() {
+  static byte tmp_block[] = {
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+    0, 0, 0, 0,
+  };
+
+  for (byte y = 0; y < current_block_size; y++) {
+    for (int x = 0; x < current_block_size; x++) {
+      tmp_block[y * current_block_size + x] = current_block_structure[x * current_block_size + (current_block_size - 1) - y];
+    }
+  }
+
+  if (!valid_block_position(current_col, current_row, tmp_block)) {
+    return false;
+  }
 
   update_block(current_col, current_row, BLOCK_NONE);
-  current_col = next_col;
-  current_row = next_row;
+
+  for (byte i = 0; i < current_block_size * current_block_size; i++) {
+    current_block_structure[i] = tmp_block[i];
+  }
   update_block(current_col, current_row, current_block_type);
+
   return true;
 }
 
