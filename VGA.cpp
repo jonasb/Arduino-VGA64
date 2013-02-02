@@ -17,7 +17,8 @@ ISR (TIMER2_OVF_vect) {
   line_ctr++;
 }
 
-VGA::VGA() {
+VGA::VGA() :
+  _interrupt(NULL) {
 }
 
 void VGA::setup() {
@@ -68,6 +69,8 @@ void VGA::scanLine() {
   } else if(line_ctr == 480) {
     // application code - executed on each frame
     // runtime must not exceed 45 lines = ~1.4mS
-    _interrupt();
+    if (_interrupt) {
+      _interrupt();
+    }
   }
 }
