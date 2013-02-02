@@ -1,25 +1,6 @@
-#include <avr/pgmspace.h>
-#include <avr/sleep.h>
+#include <VGA.h>
 
-// constants
-#define X_PIXELS    40
-#define Y_PIXELS    30
-
-// convenience
-#define NOP asm volatile ("nop\n\t")
-
-volatile int line_ctr;
-byte bitmap[Y_PIXELS][X_PIXELS];
-
-// vsync interrupt
-ISR (TIMER1_OVF_vect) {
-  line_ctr = -35; // porch is 35 lines
-}
-
-// hsync interrupt (wakes us from sleep)
-ISR (TIMER2_OVF_vect) {
-  line_ctr++;
-}
+VGA vga;
 
 #define COLUMN_COUNT  10
 #define ROW_COUNT 22
@@ -116,36 +97,13 @@ byte key_consecutive_press_rotate = 0;
 byte time = 0;
 
 void setup() {
-  // kill timer 0
-  TIMSK0 = 0;
-  OCR0A  = 0;
-  OCR0B  = 0;
-  // timer 1 - vsync
-  pinMode(10, OUTPUT);
-  TCCR1A = (_BV(WGM10) | _BV(WGM11)) | _BV(COM1B1);
-  TCCR1B = (_BV(WGM12) | _BV(WGM13)) | 5;
-  OCR1A  = 259;           // 16666/64µS=260
-  OCR1B  = 0;             // 64/64µS=1
-  TIFR1  = _BV (TOV1);
-  TIMSK1 = _BV (TOIE1);  // ovf int for timer 1
-  // timer 2 - hsync
-  pinMode(3, OUTPUT);
-  TCCR2A = (_BV(WGM20) | _BV(WGM21)) | _BV(COM2B1);
-  TCCR2B = (_BV(WGM22)) | 2;
-  OCR2A  = 63;            // 32/0.5µS=64
-  OCR2B  = 5;             // 4 /0.5µS=8
-  TIFR2  = _BV (TOV2);
-  TIMSK2 = _BV (TOIE2);  // ovf int for timer 2
-  // pixel data
-  pinMode(0, OUTPUT); pinMode(1, OUTPUT); pinMode(4, OUTPUT);
-  pinMode(5, OUTPUT); pinMode(6, OUTPUT); pinMode(7, OUTPUT);
-  // set sleep mode (int will wake)
-  set_sleep_mode(SLEEP_MODE_IDLE);
+  vga.init();
+  vga.attachInterrupt(gameTick);
   //
   randomSeed(analogRead(0)); // analog 0 is unconnected
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
-  memset(bitmap, 0b00000001, Y_PIXELS * X_PIXELS);
+  memset(vga.bitmap, 0b00000001, Y_PIXELS * X_PIXELS);
   draw_field();
   select_next_block();
   //debug_draw_all_colors(0, 0, Y_PIXELS);
@@ -163,56 +121,44 @@ void debug_draw_all_colors(byte start_x, byte start_y, byte height) {
     byte x = start_x + c / height;
     byte y = start_y + c % height;
     byte color = ((c << 2) & 0b11110000) | c & 0b00000011;
-    bitmap[y][x] = color;
+    vga.bitmap[y][x] = color;
   }
 }
 
 void loop() {
-  sleep_mode();
-  if(line_ctr >= 0 && line_ctr < 480) {
-    // this will draw a single scanline
-    register byte i = X_PIXELS;
-    register byte bitmap_y = line_ctr >> 4;
-    register byte *p_bitmap = &bitmap[bitmap_y][0];
-    while (i--) {
-      PORTD = *p_bitmap++;
-      NOP; NOP; NOP;
+  vga.scanLine();
+}
+
+void gameTick() {
+  ++time;
+
+  read_key(12, key_consecutive_press_right);
+  read_key(8, key_consecutive_press_left);
+  read_key(11, key_consecutive_press_rotate);
+
+  if (key_consecutive_press_right == 0 || key_consecutive_press_left == 0) {
+    if (key_consecutive_press_right % KEY_REPEAT_FRAMES == 1) {
+      move_block(1, 0);
     }
-    NOP; NOP; NOP;
-    PORTD = 0;
-  } else if(line_ctr == 480) {
-    // application code - executed on each frame
-    // runtime must not exceed 45 lines = ~1.4mS
-    ++time;
-
-    read_key(12, key_consecutive_press_right);
-    read_key(8, key_consecutive_press_left);
-    read_key(11, key_consecutive_press_rotate);
-
-    if (key_consecutive_press_right == 0 || key_consecutive_press_left == 0) {
-      if (key_consecutive_press_right % KEY_REPEAT_FRAMES == 1) {
-        move_block(1, 0);
-      }
-      if (key_consecutive_press_left % KEY_REPEAT_FRAMES == 1) {
-        move_block(-1, 0);
-      }
+    if (key_consecutive_press_left % KEY_REPEAT_FRAMES == 1) {
+      move_block(-1, 0);
     }
-    if (key_consecutive_press_rotate % KEY_REPEAT_FRAMES == 1) {
-      rotate_block();
-    }
+  }
+  if (key_consecutive_press_rotate % KEY_REPEAT_FRAMES == 1) {
+    rotate_block();
+  }
 
-    if (time == 20) {
-      time = 0;
-      if (!move_block(0, 1)) {
-        // Block is stuck
-        add_block_to_playfield();
-        collapse_full_rows();
+  if (time == 20) {
+    time = 0;
+    if (!move_block(0, 1)) {
+      // Block is stuck
+      add_block_to_playfield();
+      collapse_full_rows();
 
-        current_row = 0;
-        current_col = COLUMN_COUNT / 2;
-        select_next_block();
-        update_block(current_col, current_row, current_block_type);
-      }
+      current_row = 0;
+      current_col = COLUMN_COUNT / 2;
+      select_next_block();
+      update_block(current_col, current_row, current_block_type);
     }
   }
 }
@@ -356,8 +302,8 @@ void collapse_full_rows() {
       for (byte replace_row_index = check_row_index; replace_row_index > 1; replace_row_index--) {
         byte *playfield_from_row = playfield[replace_row_index - 1];
         byte *playfield_to_row = playfield[replace_row_index];
-        byte *bitmap_from_row = bitmap[playfield_offset_y + replace_row_index - 1];
-        byte *bitmap_to_row = bitmap[playfield_offset_y + replace_row_index];
+        byte *bitmap_from_row = vga.bitmap[playfield_offset_y + replace_row_index - 1];
+        byte *bitmap_to_row = vga.bitmap[playfield_offset_y + replace_row_index];
         for (byte col = 0; col < COLUMN_COUNT; col++) {
           playfield_to_row[col] = playfield_from_row[col];
           bitmap_to_row[playfield_offset_x + col] = bitmap_from_row[playfield_offset_x + col];
@@ -380,7 +326,7 @@ void draw_field() {
   for (byte row = 0; row < ROW_COUNT; row++) {
     for (byte col = 0; col < COLUMN_COUNT; col++) {
       const byte color = block_colors[playfield[row][col]];
-      bitmap[playfield_offset_y + row][playfield_offset_x + col] = color;
+      vga.bitmap[playfield_offset_y + row][playfield_offset_x + col] = color;
     }
   }
 }
@@ -390,9 +336,8 @@ void update_block(byte col, byte row, byte block) {
   for (byte block_y = 0; block_y < current_block_size; block_y++) {
     for (byte block_x = 0; block_x < current_block_size; block_x++) {
       if (current_block_structure[block_y * current_block_size + block_x] != 0) {
-        bitmap[playfield_offset_y + row + block_y][playfield_offset_x + col + block_x] = color;
+        vga.bitmap[playfield_offset_y + row + block_y][playfield_offset_x + col + block_x] = color;
       }
     }
   }
 }
-
