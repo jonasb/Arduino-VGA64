@@ -9,13 +9,13 @@
 
 class VGA {
 public:
-	VGA();
-	void init();
-	void attachInterrupt(void (*interrupt)(void));
-	void scanLine();
-	byte bitmap[Y_PIXELS][X_PIXELS];
+  VGA();
+  void setup();
+  void attachInterrupt(void (*interrupt)(void));
+  void scanLine();
+  byte bitmap[Y_PIXELS][X_PIXELS];
 private:
-	void (*_interrupt)(void);
+  void (*_interrupt)(void);
 };
 
 #endif //VGA_H_INCLUDED

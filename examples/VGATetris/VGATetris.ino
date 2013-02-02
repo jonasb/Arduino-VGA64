@@ -97,7 +97,7 @@ byte keyConsecutivePressesRotate = 0;
 byte time = 0;
 
 void setup() {
-  vga.init();
+  vga.setup();
   vga.attachInterrupt(gameTick);
   //
   randomSeed(analogRead(0)); // analog 0 is unconnected

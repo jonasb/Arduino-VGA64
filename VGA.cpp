@@ -20,7 +20,7 @@ ISR (TIMER2_OVF_vect) {
 VGA::VGA() {
 }
 
-void VGA::init() {
+void VGA::setup() {
   // kill timer 0
   TIMSK0 = 0;
   OCR0A  = 0;
