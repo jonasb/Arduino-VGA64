@@ -4,16 +4,16 @@
 #include <arduino.h>
 
 // constants
-#define X_PIXELS    40
-#define Y_PIXELS    30
+#define width 40
+#define height 30
 
 class VGA {
 public:
   VGA();
-  void setup();
+  void begin();
   void attachInterrupt(void (*interrupt)(void));
   void scanLine();
-  byte bitmap[Y_PIXELS][X_PIXELS];
+  byte pixels[height][width];
 private:
   void (*_interrupt)(void);
 };
@@ -23,7 +23,7 @@ private:
 // The bit pattern is rrggxxbb, where the xx bits are ignored.
 
 // Create a color, each component can be 0-3.
-#define COLOR222(r, g, b) \
+#define color222(r, g, b) \
   (r & 0b00000011) << 6 | \
   (g & 0b00000011) << 4 | \
   (b & 0b00000011)
@@ -32,7 +32,7 @@ private:
 // This is just a convenience function. It allows you to convert a more standard
 // color (where each component can be 0-255) to the supported format.
 // Even if you can define 16 million colors the result is only 64 different colors.
-#define COLOR888(r, g, b) \
-  COLOR222(r >> 2, g >> 2, b >> 2)
+#define color888(r, g, b) \
+  color222(r >> 2, g >> 2, b >> 2)
 
 #endif //VGA_H_INCLUDED

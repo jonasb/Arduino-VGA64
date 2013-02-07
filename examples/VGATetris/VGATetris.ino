@@ -4,8 +4,8 @@ VGA vga;
 
 #define COLUMN_COUNT  10
 #define ROW_COUNT 22
-const byte playfieldOffsetX = (X_PIXELS - COLUMN_COUNT) / 2;
-const byte playfieldOffsetY = (Y_PIXELS - ROW_COUNT) / 2;
+const byte playfieldOffsetX = (width - COLUMN_COUNT) / 2;
+const byte playfieldOffsetY = (height - ROW_COUNT) / 2;
 
 byte playfield[ROW_COUNT][COLUMN_COUNT];
 enum BlockType {
@@ -97,16 +97,16 @@ byte keyConsecutivePressesRotate = 0;
 byte time = 0;
 
 void setup() {
-  vga.setup();
+  vga.begin();
   vga.attachInterrupt(gameTick);
   //
   randomSeed(analogRead(0)); // analog 0 is unconnected
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
-  memset(vga.bitmap, 0b00000001, Y_PIXELS * X_PIXELS);
+  memset(vga.pixels, 0b00000001, height * width);
   drawField();
   selectNextBlock();
-  //debugDrawAllColors(0, 0, Y_PIXELS);
+  //debugDrawAllColors(0, 0, height);
   // control
   pinMode(11, INPUT);
   digitalWrite(11, HIGH);
@@ -116,12 +116,12 @@ void setup() {
   digitalWrite(8, HIGH);
 }
 
-void debugDrawAllColors(byte startX, byte startY, byte height) {
+void debugDrawAllColors(byte startX, byte startY, byte rows) {
   for (byte c = 0; c < 64; c++) {
-    byte x = startX + c / height;
-    byte y = startY + c % height;
+    byte x = startX + c / rows;
+    byte y = startY + c % rows;
     byte color = ((c << 2) & 0b11110000) | c & 0b00000011;
-    vga.bitmap[y][x] = color;
+    vga.pixels[y][x] = color;
   }
 }
 
@@ -303,8 +303,8 @@ void collapseFullRows() {
       for (byte replaceRowIndex = checkRowIndex; replaceRowIndex > 1; replaceRowIndex--) {
         byte *playfieldFromRow = playfield[replaceRowIndex - 1];
         byte *playfieldToRow = playfield[replaceRowIndex];
-        byte *bitmapFromRow = vga.bitmap[playfieldOffsetY + replaceRowIndex - 1];
-        byte *bitmapToRow = vga.bitmap[playfieldOffsetY + replaceRowIndex];
+        byte *bitmapFromRow = vga.pixels[playfieldOffsetY + replaceRowIndex - 1];
+        byte *bitmapToRow = vga.pixels[playfieldOffsetY + replaceRowIndex];
         for (byte col = 0; col < COLUMN_COUNT; col++) {
           playfieldToRow[col] = playfieldFromRow[col];
           bitmapToRow[playfieldOffsetX + col] = bitmapFromRow[playfieldOffsetX + col];
@@ -327,7 +327,7 @@ void drawField() {
   for (byte row = 0; row < ROW_COUNT; row++) {
     for (byte col = 0; col < COLUMN_COUNT; col++) {
       const byte color = blockColors[playfield[row][col]];
-      vga.bitmap[playfieldOffsetY + row][playfieldOffsetX + col] = color;
+      vga.pixels[playfieldOffsetY + row][playfieldOffsetX + col] = color;
     }
   }
 }
@@ -337,7 +337,7 @@ void updateBlock(byte col, byte row, byte block) {
   for (byte blockY = 0; blockY < currentBlockSize; blockY++) {
     for (byte blockX = 0; blockX < currentBlockSize; blockX++) {
       if (currentBlockStructure[blockY * currentBlockSize + blockX] != 0) {
-        vga.bitmap[playfieldOffsetY + row + blockY][playfieldOffsetX + col + blockX] = color;
+        vga.pixels[playfieldOffsetY + row + blockY][playfieldOffsetX + col + blockX] = color;
       }
     }
   }

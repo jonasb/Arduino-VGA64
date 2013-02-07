@@ -21,7 +21,7 @@ VGA::VGA() :
   _interrupt(NULL) {
 }
 
-void VGA::setup() {
+void VGA::begin() {
   // kill timer 0
   TIMSK0 = 0;
   OCR0A  = 0;
@@ -57,9 +57,9 @@ void VGA::scanLine() {
   sleep_mode();
   if(line_ctr >= 0 && line_ctr < 480) {
     // this will draw a single scanline
-    register byte i = X_PIXELS;
+    register byte i = width;
     register byte bitmap_y = line_ctr >> 4;
-    register byte *p_bitmap = &bitmap[bitmap_y][0];
+    register byte *p_bitmap = &pixels[bitmap_y][0];
     while (i--) {
       PORTD = *p_bitmap++;
       NOP; NOP; NOP;

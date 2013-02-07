@@ -3,7 +3,7 @@
 VGA vga;
 
 void setup() {
-  vga.setup();
+  vga.begin();
   vga.attachInterrupt(tick);
 }
 
@@ -12,7 +12,7 @@ void loop() {
 }
 
 void tick() {
-  int x = random(X_PIXELS);
-  int y = random(Y_PIXELS);
-  vga.bitmap[y][x] = random(256);
+  int x = random(width);
+  int y = random(height);
+  vga.pixels[y][x] = random(256);
 }
