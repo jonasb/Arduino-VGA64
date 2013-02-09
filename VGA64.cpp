@@ -1,4 +1,4 @@
-#include "VGA.h"
+#include "VGA64.h"
 #include <avr/pgmspace.h>
 #include <avr/sleep.h>
 
@@ -17,11 +17,11 @@ ISR (TIMER2_OVF_vect) {
   line_ctr++;
 }
 
-VGA::VGA() :
+VGA64::VGA64() :
   _interrupt(NULL) {
 }
 
-void VGA::begin() {
+void VGA64::begin() {
   // kill timer 0
   TIMSK0 = 0;
   OCR0A  = 0;
@@ -49,11 +49,11 @@ void VGA::begin() {
   set_sleep_mode(SLEEP_MODE_IDLE);
 }
 
-void VGA::attachInterrupt(void (*interrupt)(void)) {
+void VGA64::attachInterrupt(void (*interrupt)(void)) {
   _interrupt = interrupt;
 }
 
-void VGA::scanLine() {
+void VGA64::scanLine() {
   sleep_mode();
   if(line_ctr >= 0 && line_ctr < 480) {
     // this will draw a single scanline

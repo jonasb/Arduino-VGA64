@@ -1,6 +1,6 @@
-#include <VGA.h>
+#include <VGA64.h>
 
-VGA vga;
+VGA64 vga;
 
 void setup() {
   vga.begin();

@@ -1,5 +1,5 @@
-#ifndef VGA_H_INCLUDED
-#define VGA_H_INCLUDED
+#ifndef VGA64_H_INCLUDED
+#define VGA64_H_INCLUDED
 
 #include <arduino.h>
 
@@ -18,9 +18,9 @@
 #define width 40
 #define height 30
 
-class VGA {
+class VGA64 {
 public:
-  VGA();
+  VGA64();
   void begin();
   void attachInterrupt(void (*interrupt)(void));
   void scanLine();
@@ -46,4 +46,4 @@ private:
 #define color888(r, g, b) \
   color222(r >> 2, g >> 2, b >> 2)
 
-#endif //VGA_H_INCLUDED
+#endif //VGA64_H_INCLUDED
