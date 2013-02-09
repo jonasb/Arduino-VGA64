@@ -3,7 +3,18 @@
 
 #include <arduino.h>
 
-// constants
+// Schematic
+// Arduino pin 0  (blue low)----1.5kΩ-+-HD15 pin 3  (BLUE)
+// Arduino pin 1  (blue high)---690Ω-/
+// Arduino pin 3  (hsync)---------------HD15 pin 13 (HSync)
+// Arduino pin 4  (green low)---1.5kΩ-+-HD15 pin 2  (GREEN)
+// Arduino pin 5  (green high)--690Ω-/
+// Arduino pin 6  (red low)-----1.5kΩ-+-HD15 pin 1  (RED)
+// Arduino pin 7  (red high)----690Ω-/
+// Arduino pin 10 (vsync)---------------HD15 pin 14 (VSync)
+// Arduino GND--------------------------HD15 pin 5  (GND)
+
+// Constants
 #define width 40
 #define height 30
 
