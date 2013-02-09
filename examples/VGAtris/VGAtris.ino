@@ -19,14 +19,14 @@ enum BlockType {
   BLOCK_L,
 };
 const byte blockColors[] = {
-  0b00000000,
-  0b11110000,
-  0b00110011,
-  0b11000010,
-  0b00110001,
-  0b00000011,
-  0b10000000,
-  0b00100011,
+  color222(0, 0, 0),
+  color222(0, 3, 3),
+  color222(3, 3, 0),
+  color222(2, 0, 3),
+  color222(1, 3, 0),
+  color222(3, 0, 0),
+  color222(0, 0, 2),
+  color222(3, 2, 0),
 };
 const byte BLOCK_I_STRUCTURE[4][4] = {
   0, 0, 0, 0,
@@ -103,10 +103,9 @@ void setup() {
   randomSeed(analogRead(0)); // analog 0 is unconnected
   // setup playfield
   memset(playfield, BLOCK_NONE, ROW_COUNT * COLUMN_COUNT);
-  memset(vga.pixels, 0b00000001, height * width);
+  memset(vga.pixels, color222(1, 0, 0), height * width);
   drawField();
   selectNextBlock();
-  //debugDrawAllColors(0, 0, height);
   // control
   pinMode(11, INPUT);
   digitalWrite(11, HIGH);
@@ -114,15 +113,6 @@ void setup() {
   digitalWrite(12, HIGH);
   pinMode(8, INPUT);
   digitalWrite(8, HIGH);
-}
-
-void debugDrawAllColors(byte startX, byte startY, byte rows) {
-  for (byte c = 0; c < 64; c++) {
-    byte x = startX + c / rows;
-    byte y = startY + c % rows;
-    byte color = ((c << 2) & 0b11110000) | c & 0b00000011;
-    vga.pixels[y][x] = color;
-  }
 }
 
 void loop() {
